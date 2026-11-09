@@ -1,0 +1,72 @@
+# ── Python ─────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.Python
+env/
+venv/
+.venv/
+pip-wheel-metadata/
+
+# ── Data ───────────────────────────────────────────────────────────────────────
+data/raw/
+data/processed/
+data/models/
+data/checkpoints/
+data/delta/
+*.parquet
+*.csv.gz
+
+# Keep sample data directory
+!data/sample/.gitkeep
+
+# ── Logs ───────────────────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── Environment ────────────────────────────────────────────────────────────────
+.env
+!.env.example
+
+# ── IDE ────────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Testing ────────────────────────────────────────────────────────────────────
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
+# ── Spark ──────────────────────────────────────────────────────────────────────
+derby.log
+metastore_db/
+spark-warehouse/
+
+# ── Airflow ────────────────────────────────────────────────────────────────────
+airflow/logs/
+airflow/airflow.db
+airflow/webserver_config.py
+
+# ── Docker ─────────────────────────────────────────────────────────────────────
+.dockerignore
+
+# ── Jupyter ────────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb~
+
+# ── Misc ───────────────────────────────────────────────────────────────────────
+*.tmp
+*.bak
+*.orig
