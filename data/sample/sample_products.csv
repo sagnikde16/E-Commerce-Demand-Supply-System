@@ -1,0 +1,26 @@
+product_id,product_name,category,unit_price,cost_price,reorder_point,reorder_quantity,lead_time_days
+PROD0001,Clothing Product 1,Clothing,60.83,36.5,134,416,14
+PROD0002,Home & Garden Product 2,Home & Garden,49.83,29.9,81,231,10
+PROD0003,Books Product 3,Books,204.76,122.86,32,497,14
+PROD0004,Sports Product 4,Sports,304.19,182.51,36,125,9
+PROD0005,Toys Product 5,Toys,223.65,134.19,144,481,4
+PROD0006,Electronics Product 6,Electronics,90.31,54.19,127,282,4
+PROD0007,Clothing Product 7,Clothing,56.35,33.81,47,370,4
+PROD0008,Home & Garden Product 8,Home & Garden,21.94,13.16,114,451,4
+PROD0009,Books Product 9,Books,225.64,135.38,48,486,3
+PROD0010,Sports Product 10,Sports,468.41,281.05,52,321,7
+PROD0011,Toys Product 11,Toys,137.78,82.67,112,394,7
+PROD0012,Electronics Product 12,Electronics,132.38,79.43,115,315,9
+PROD0013,Clothing Product 13,Clothing,306.72,184.03,64,419,13
+PROD0014,Home & Garden Product 14,Home & Garden,279.73,167.84,122,409,8
+PROD0015,Books Product 15,Books,232.53,139.52,130,118,9
+PROD0016,Sports Product 16,Sports,413.01,247.81,74,488,4
+PROD0017,Toys Product 17,Toys,89.29,53.57,108,179,13
+PROD0018,Electronics Product 18,Electronics,308.46,185.08,117,173,12
+PROD0019,Clothing Product 19,Clothing,183.31,109.99,64,480,13
+PROD0020,Home & Garden Product 20,Home & Garden,89.36,53.62,46,228,7
+PROD0021,Books Product 21,Books,95.03,57.02,97,484,4
+PROD0022,Sports Product 22,Sports,209.33,125.6,118,128,6
+PROD0023,Toys Product 23,Toys,38.12,22.87,92,244,5
+PROD0024,Electronics Product 24,Electronics,390.11,234.07,116,118,9
+PROD0025,Clothing Product 25,Clothing,28.23,16.94,30,107,7
