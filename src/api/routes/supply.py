@@ -1,4 +1,5 @@
 """Supply chain analytics API routes."""
+
 from pathlib import Path
 
 import pandas as pd
@@ -7,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Query
 from src.api.schemas import SupplyAnalyticsResponse, SupplyGapItem
 
 router = APIRouter()
-PROC   = Path("./data/processed")
+PROC = Path("./data/processed")
 
 
 def _read(name: str) -> pd.DataFrame:

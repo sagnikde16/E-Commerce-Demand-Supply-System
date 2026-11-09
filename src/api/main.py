@@ -2,19 +2,17 @@
 FastAPI application entry point.
 Provides REST API access to demand-supply analytics.
 """
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api.routes import demand, inventory, supply, products, health
+from src.api.routes import demand, health, inventory, products, supply
 
 app = FastAPI(
     title="E-Commerce Demand-Supply API",
-    description=(
-        "REST API for the distributed e-commerce demand-supply analytics system "
-        "powered by Apache Spark."
-    ),
+    description=("REST API for the distributed e-commerce demand-supply analytics system " "powered by Apache Spark."),
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -30,11 +28,11 @@ app.add_middleware(
 )
 
 # ── Routers ───────────────────────────────────────────────────────────────────
-app.include_router(health.router,    tags=["Health"])
-app.include_router(demand.router,    prefix="/api/v1/demand",    tags=["Demand"])
+app.include_router(health.router, tags=["Health"])
+app.include_router(demand.router, prefix="/api/v1/demand", tags=["Demand"])
 app.include_router(inventory.router, prefix="/api/v1/inventory", tags=["Inventory"])
-app.include_router(supply.router,    prefix="/api/v1/supply",    tags=["Supply"])
-app.include_router(products.router,  prefix="/api/v1/products",  tags=["Products"])
+app.include_router(supply.router, prefix="/api/v1/supply", tags=["Supply"])
+app.include_router(products.router, prefix="/api/v1/products", tags=["Products"])
 
 
 @app.exception_handler(Exception)

@@ -3,7 +3,7 @@ ML-based demand forecasting using Spark MLlib.
 Trains Random Forest and Linear Regression models on historical demand aggregates.
 Saves models and produces forecasts for all products.
 """
-import os
+
 from pathlib import Path
 from typing import Optional
 
@@ -11,13 +11,8 @@ import yaml
 from loguru import logger
 from pyspark.ml import Pipeline, PipelineModel
 from pyspark.ml.evaluation import RegressionEvaluator
-from pyspark.ml.feature import StringIndexer, VectorAssembler, StandardScaler
-from pyspark.ml.regression import (
-    GBTRegressor,
-    LinearRegression,
-    RandomForestRegressor,
-)
-from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
+from pyspark.ml.feature import StandardScaler, StringIndexer, VectorAssembler
+from pyspark.ml.regression import GBTRegressor, LinearRegression, RandomForestRegressor
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
 
@@ -35,19 +30,26 @@ class DemandForecaster:
     """
 
     FEATURES = [
-        "day_of_week", "month", "is_weekend", "avg_price",
-        "category_idx", "lag_7", "lag_14",
-        "rolling_mean_7", "rolling_mean_14", "rolling_std_7",
+        "day_of_week",
+        "month",
+        "is_weekend",
+        "avg_price",
+        "category_idx",
+        "lag_7",
+        "lag_14",
+        "rolling_mean_7",
+        "rolling_mean_14",
+        "rolling_std_7",
         "week_of_year",
     ]
     TARGET = "total_quantity"
 
     def __init__(self, spark: SparkSession, config: dict):
-        self.spark     = spark
-        self.cfg       = config
-        self.ml_cfg    = config["ml"]["demand_forecast"]
+        self.spark = spark
+        self.cfg = config
+        self.ml_cfg = config["ml"]["demand_forecast"]
         self.proc_path = Path(config["data"]["processed_path"])
-        self.model_path= Path(config["data"]["model_path"])
+        self.model_path = Path(config["data"]["model_path"])
         self.model_path.mkdir(parents=True, exist_ok=True)
         self._model: Optional[PipelineModel] = None
 
@@ -125,27 +127,25 @@ class DemandForecaster:
         Returns:
             Evaluation metrics dict: {rmse, mae, r2}.
         """
-        algo   = algorithm or self.ml_cfg.get("algorithm", "random_forest")
-        split  = self.ml_cfg.get("train_test_split", 0.8)
+        algo = algorithm or self.ml_cfg.get("algorithm", "random_forest")
+        split = self.ml_cfg.get("train_test_split", 0.8)
 
         logger.info(f"Training demand forecaster: {algo}")
         df = self._load_data()
 
         # Chronological train/test split
-        total  = df.count()
+        total = df.count()
         cutoff = int(total * split)
         df_sorted = df.orderBy("order_date")
-        train_df  = df_sorted.limit(cutoff)
-        test_df   = df_sorted.subtract(train_df)
+        train_df = df_sorted.limit(cutoff)
+        test_df = df_sorted.subtract(train_df)
 
         pipeline = self._build_pipeline(algo)
         self._model = pipeline.fit(train_df)
 
         # Evaluate on test set
         predictions = self._model.transform(test_df)
-        evaluator = RegressionEvaluator(
-            labelCol=self.TARGET, predictionCol="prediction"
-        )
+        evaluator = RegressionEvaluator(labelCol=self.TARGET, predictionCol="prediction")
         metrics = {}
         for metric in ["rmse", "mae", "r2"]:
             evaluator.setMetricName(metric)
@@ -174,9 +174,7 @@ class DemandForecaster:
         if self._model is None:
             raise RuntimeError("Model not loaded. Call train() or load_model() first.")
         predictions = self._model.transform(df)
-        return predictions.withColumn(
-            "predicted_demand", F.round(F.col("prediction"), 0).cast("integer")
-        )
+        return predictions.withColumn("predicted_demand", F.round(F.col("prediction"), 0).cast("integer"))
 
     def generate_forecasts(self, horizon_days: int = 30) -> DataFrame:
         """
@@ -204,27 +202,24 @@ class DemandForecaster:
 
         # Add date features
         future = (
-            future
-            .withColumn("order_date",   F.col("forecast_date"))
-            .withColumn("day_of_week",  F.dayofweek("forecast_date"))
-            .withColumn("month",        F.month("forecast_date"))
+            future.withColumn("order_date", F.col("forecast_date"))
+            .withColumn("day_of_week", F.dayofweek("forecast_date"))
+            .withColumn("month", F.month("forecast_date"))
             .withColumn("week_of_year", F.weekofyear("forecast_date"))
-            .withColumn("is_weekend",
-                        F.when(F.dayofweek("forecast_date").isin([1, 7]), 1).otherwise(0))
+            .withColumn(
+                "is_weekend",
+                F.when(F.dayofweek("forecast_date").isin([1, 7]), 1).otherwise(0),
+            )
         )
 
         # Join with rolling averages from historical data
-        rolling = (
-            base
-            .groupBy("product_id")
-            .agg(
-                F.avg("avg_price").alias("avg_price"),
-                F.avg("rolling_mean_7").alias("rolling_mean_7"),
-                F.avg("rolling_mean_14").alias("rolling_mean_14"),
-                F.avg("rolling_std_7").alias("rolling_std_7"),
-                F.avg("lag_7").alias("lag_7"),
-                F.avg("lag_14").alias("lag_14"),
-            )
+        rolling = base.groupBy("product_id").agg(
+            F.avg("avg_price").alias("avg_price"),
+            F.avg("rolling_mean_7").alias("rolling_mean_7"),
+            F.avg("rolling_mean_14").alias("rolling_mean_14"),
+            F.avg("rolling_std_7").alias("rolling_std_7"),
+            F.avg("lag_7").alias("lag_7"),
+            F.avg("lag_14").alias("lag_14"),
         )
 
         future = future.join(rolling, on="product_id", how="left").fillna(0)
@@ -232,18 +227,14 @@ class DemandForecaster:
         future = future.withColumn(self.TARGET, F.lit(0.0))
 
         predictions = self.predict(future)
-        return (
-            predictions
-            .select("product_id", "category", "forecast_date", "predicted_demand")
-            .orderBy("product_id", "forecast_date")
+        return predictions.select("product_id", "category", "forecast_date", "predicted_demand").orderBy(
+            "product_id", "forecast_date"
         )
 
     def run(self, algorithm: Optional[str] = None) -> None:
         """Train model and save forecasts."""
-        metrics  = self.train(algorithm)
-        forecasts = self.generate_forecasts(
-            horizon_days=self.ml_cfg.get("forecast_horizon_days", 30)
-        )
+        metrics = self.train(algorithm)
+        forecasts = self.generate_forecasts(horizon_days=self.ml_cfg.get("forecast_horizon_days", 30))
         out = str(self.proc_path / "demand_forecasts")
         forecasts.write.mode("overwrite").parquet(out)
         logger.success(f"Forecasts written → {out}")

@@ -1,4 +1,5 @@
 """Products and top-sellers API routes."""
+
 from pathlib import Path
 
 import pandas as pd
@@ -7,7 +8,7 @@ from fastapi import APIRouter, HTTPException, Query
 from src.api.schemas import TopSellerItem, TopSellersResponse
 
 router = APIRouter()
-PROC   = Path("./data/processed")
+PROC = Path("./data/processed")
 
 
 def _read(name: str) -> pd.DataFrame:

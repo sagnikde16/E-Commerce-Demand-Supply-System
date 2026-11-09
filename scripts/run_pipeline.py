@@ -9,6 +9,7 @@ Runs:
 6. Inventory Optimization
 7. Price Elasticity Analysis
 """
+
 import sys
 import time
 from pathlib import Path
@@ -17,14 +18,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from loguru import logger
+
+from config.spark_config import get_spark_session, stop_spark_session
 from scripts.generate_data import run_generation
-from src.processing.etl_pipeline import main as run_etl
-from src.processing.demand_aggregator import DemandAggregator
-from src.processing.supply_analyzer import SupplyAnalyzer
 from src.ml.demand_forecaster import main as run_forecaster
 from src.ml.inventory_optimizer import main as run_inventory_optimizer
 from src.ml.price_elasticity import main as run_price_elasticity
-from config.spark_config import get_spark_session, stop_spark_session
+from src.processing.demand_aggregator import DemandAggregator
+from src.processing.etl_pipeline import main as run_etl
+from src.processing.supply_analyzer import SupplyAnalyzer
 
 
 def run_full_pipeline(records: int = 10_000):

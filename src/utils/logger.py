@@ -1,6 +1,7 @@
 """
 Logging utilities using loguru.
 """
+
 import sys
 from pathlib import Path
 

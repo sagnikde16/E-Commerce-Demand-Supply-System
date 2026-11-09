@@ -2,16 +2,19 @@
 Tests for the ETL pipeline.
 Uses a local Spark session with a small synthetic dataset.
 """
-import os
+
 import sys
 from pathlib import Path
 
-import pandas as pd
 import pytest
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.types import (
-    DateType, DoubleType, IntegerType, StringType, StructField, StructType,
+    DoubleType,
+    IntegerType,
+    StringType,
+    StructField,
+    StructType,
 )
 
 # Allow importing from project root
@@ -22,8 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 def spark():
     """Create a minimal local Spark session for testing."""
     session = (
-        SparkSession.builder
-        .appName("ETLTests")
+        SparkSession.builder.appName("ETLTests")
         .master("local[2]")
         .config("spark.sql.shuffle.partitions", "2")
         .config("spark.ui.enabled", "false")
@@ -38,43 +40,130 @@ def spark():
 def sample_orders(spark):
     """Create a small orders DataFrame for testing."""
     data = [
-        ("ORD001", "PROD0001", "Electronics", "CUST00001",
-         "2024-01-15", 2, 299.99, 0.0, 599.98, "delivered", "web", "North",
-         1, 1, 2024, 3, 0, "Winter"),
-        ("ORD002", "PROD0002", "Clothing",    "CUST00002",
-         "2024-02-20", 1, 49.99,  0.1, 44.99,  "shipped",   "mobile", "South",
-         2, 2, 2024, 8, 0, "Winter"),
-        ("ORD003", "PROD0001", "Electronics", "CUST00003",
-         "2024-01-16", 3, 299.99, 0.0, 899.97, "delivered", "web", "East",
-         1, 1, 2024, 3, 0, "Winter"),
-        ("ORD004", "PROD0003", "Books",       "CUST00004",
-         "2024-03-10", 1, 19.99,  0.0, 19.99,  "cancelled", "web", "West",
-         0, 3, 2024, 10, 1, "Spring"),
+        (
+            "ORD001",
+            "PROD0001",
+            "Electronics",
+            "CUST00001",
+            "2024-01-15",
+            2,
+            299.99,
+            0.0,
+            599.98,
+            "delivered",
+            "web",
+            "North",
+            1,
+            1,
+            2024,
+            3,
+            0,
+            "Winter",
+        ),
+        (
+            "ORD002",
+            "PROD0002",
+            "Clothing",
+            "CUST00002",
+            "2024-02-20",
+            1,
+            49.99,
+            0.1,
+            44.99,
+            "shipped",
+            "mobile",
+            "South",
+            2,
+            2,
+            2024,
+            8,
+            0,
+            "Winter",
+        ),
+        (
+            "ORD003",
+            "PROD0001",
+            "Electronics",
+            "CUST00003",
+            "2024-01-16",
+            3,
+            299.99,
+            0.0,
+            899.97,
+            "delivered",
+            "web",
+            "East",
+            1,
+            1,
+            2024,
+            3,
+            0,
+            "Winter",
+        ),
+        (
+            "ORD004",
+            "PROD0003",
+            "Books",
+            "CUST00004",
+            "2024-03-10",
+            1,
+            19.99,
+            0.0,
+            19.99,
+            "cancelled",
+            "web",
+            "West",
+            0,
+            3,
+            2024,
+            10,
+            1,
+            "Spring",
+        ),
         # Duplicate — should be deduped
-        ("ORD001", "PROD0001", "Electronics", "CUST00001",
-         "2024-01-15", 2, 299.99, 0.0, 599.98, "delivered", "web", "North",
-         1, 1, 2024, 3, 0, "Winter"),
+        (
+            "ORD001",
+            "PROD0001",
+            "Electronics",
+            "CUST00001",
+            "2024-01-15",
+            2,
+            299.99,
+            0.0,
+            599.98,
+            "delivered",
+            "web",
+            "North",
+            1,
+            1,
+            2024,
+            3,
+            0,
+            "Winter",
+        ),
     ]
-    schema = StructType([
-        StructField("order_id",     StringType(),  False),
-        StructField("product_id",   StringType(),  False),
-        StructField("category",     StringType(),  True),
-        StructField("customer_id",  StringType(),  True),
-        StructField("order_date",   StringType(),  True),
-        StructField("quantity",     IntegerType(), True),
-        StructField("unit_price",   DoubleType(),  True),
-        StructField("discount",     DoubleType(),  True),
-        StructField("total_amount", DoubleType(),  True),
-        StructField("status",       StringType(),  True),
-        StructField("channel",      StringType(),  True),
-        StructField("region",       StringType(),  True),
-        StructField("day_of_week",  IntegerType(), True),
-        StructField("month",        IntegerType(), True),
-        StructField("year",         IntegerType(), True),
-        StructField("week_of_year", IntegerType(), True),
-        StructField("is_weekend",   IntegerType(), True),
-        StructField("season",       StringType(),  True),
-    ])
+    schema = StructType(
+        [
+            StructField("order_id", StringType(), False),
+            StructField("product_id", StringType(), False),
+            StructField("category", StringType(), True),
+            StructField("customer_id", StringType(), True),
+            StructField("order_date", StringType(), True),
+            StructField("quantity", IntegerType(), True),
+            StructField("unit_price", DoubleType(), True),
+            StructField("discount", DoubleType(), True),
+            StructField("total_amount", DoubleType(), True),
+            StructField("status", StringType(), True),
+            StructField("channel", StringType(), True),
+            StructField("region", StringType(), True),
+            StructField("day_of_week", IntegerType(), True),
+            StructField("month", IntegerType(), True),
+            StructField("year", IntegerType(), True),
+            StructField("week_of_year", IntegerType(), True),
+            StructField("is_weekend", IntegerType(), True),
+            StructField("season", StringType(), True),
+        ]
+    )
     return spark.createDataFrame(data, schema=schema)
 
 

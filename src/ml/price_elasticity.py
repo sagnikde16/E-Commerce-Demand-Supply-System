@@ -2,14 +2,13 @@
 Price elasticity of demand analysis using Spark.
 Estimates how demand changes with price changes for each product/category.
 """
+
 from pathlib import Path
 
 from loguru import logger
 from pyspark.ml.feature import VectorAssembler
-from pyspark.ml.regression import LinearRegression
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql import functions as F
-from pyspark.sql.window import Window
 
 
 class PriceElasticityAnalyzer:
@@ -26,7 +25,7 @@ class PriceElasticityAnalyzer:
 
     def __init__(self, spark: SparkSession, processed_path: str):
         self.spark = spark
-        self.proc  = Path(processed_path)
+        self.proc = Path(processed_path)
 
     def _read_demand(self) -> DataFrame:
         return self.spark.read.parquet(str(self.proc / "daily_demand"))
@@ -40,9 +39,8 @@ class PriceElasticityAnalyzer:
 
         # Log transform
         log_df = (
-            demand
-            .filter((F.col("avg_price") > 0) & (F.col("units_sold") > 0))
-            .withColumn("log_price",    F.log("avg_price"))
+            demand.filter((F.col("avg_price") > 0) & (F.col("units_sold") > 0))
+            .withColumn("log_price", F.log("avg_price"))
             .withColumn("log_quantity", F.log("units_sold"))
         )
 
@@ -57,13 +55,15 @@ class PriceElasticityAnalyzer:
         # Train linear regression per product using grouped map
         from pyspark.sql.types import DoubleType, StringType, StructField, StructType
 
-        schema = StructType([
-            StructField("product_id",   StringType(),  False),
-            StructField("category",     StringType(),  True),
-            StructField("elasticity",   DoubleType(),  True),
-            StructField("r_squared",    DoubleType(),  True),
-            StructField("data_points",  DoubleType(),  True),
-        ])
+        schema = StructType(
+            [
+                StructField("product_id", StringType(), False),
+                StructField("category", StringType(), True),
+                StructField("elasticity", DoubleType(), True),
+                StructField("r_squared", DoubleType(), True),
+                StructField("data_points", DoubleType(), True),
+            ]
+        )
 
         def fit_elasticity(pdf):
             """Fit OLS on a pandas group and return elasticity coefficient."""
@@ -85,30 +85,30 @@ class PriceElasticityAnalyzer:
                 y_pred = intercept + slope * x
                 ss_res = np.sum((y - y_pred) ** 2)
                 ss_tot = np.sum((y - np.mean(y)) ** 2)
-                r2     = 1 - ss_res / ss_tot if ss_tot > 0 else 0.0
+                r2 = 1 - ss_res / ss_tot if ss_tot > 0 else 0.0
 
-                return pd.DataFrame([{
-                    "product_id":  pdf["product_id"].iloc[0],
-                    "category":    pdf["category"].iloc[0],
-                    "elasticity":  round(float(slope), 4),
-                    "r_squared":   round(float(r2), 4),
-                    "data_points": float(len(pdf)),
-                }])
+                return pd.DataFrame(
+                    [
+                        {
+                            "product_id": pdf["product_id"].iloc[0],
+                            "category": pdf["category"].iloc[0],
+                            "elasticity": round(float(slope), 4),
+                            "r_squared": round(float(r2), 4),
+                            "data_points": float(len(pdf)),
+                        }
+                    ]
+                )
             except Exception:
                 return pd.DataFrame(columns=schema.fieldNames())
 
-        result = (
-            assembled
-            .groupBy("product_id")
-            .applyInPandas(fit_elasticity, schema=schema)
-        )
+        result = assembled.groupBy("product_id").applyInPandas(fit_elasticity, schema=schema)
 
         return result.withColumn(
             "demand_type",
             F.when(F.col("elasticity") < -1, "Elastic")
             .when(F.col("elasticity").between(-1, 0), "Inelastic")
             .when(F.col("elasticity") > 0, "Giffen Good")
-            .otherwise("Unit Elastic")
+            .otherwise("Unit Elastic"),
         )
 
     def category_elasticity(self, demand: DataFrame) -> DataFrame:
@@ -116,27 +116,23 @@ class PriceElasticityAnalyzer:
         logger.info("Computing category elasticity …")
 
         log_df = (
-            demand
-            .filter((F.col("avg_price") > 0) & (F.col("units_sold") > 0))
-            .withColumn("log_price",    F.log("avg_price"))
+            demand.filter((F.col("avg_price") > 0) & (F.col("units_sold") > 0))
+            .withColumn("log_price", F.log("avg_price"))
             .withColumn("log_quantity", F.log("units_sold"))
         )
 
         assembler = VectorAssembler(inputCols=["log_price"], outputCol="features")
         assembled = assembler.transform(log_df)
 
-        lr = LinearRegression(
-            featuresCol="features",
-            labelCol="log_quantity",
-            maxIter=100,
-        )
-
         from pyspark.sql.types import DoubleType, StringType, StructField, StructType
-        schema = StructType([
-            StructField("category",   StringType(), False),
-            StructField("elasticity", DoubleType(), True),
-            StructField("r_squared",  DoubleType(), True),
-        ])
+
+        schema = StructType(
+            [
+                StructField("category", StringType(), False),
+                StructField("elasticity", DoubleType(), True),
+                StructField("r_squared", DoubleType(), True),
+            ]
+        )
 
         def fit_category(pdf):
             import numpy as np
@@ -154,11 +150,15 @@ class PriceElasticityAnalyzer:
                 ss_res = np.sum((y - y_pred) ** 2)
                 ss_tot = np.sum((y - np.mean(y)) ** 2)
                 r2 = 1 - ss_res / ss_tot if ss_tot > 0 else 0.0
-                return pd.DataFrame([{
-                    "category":   pdf["category"].iloc[0],
-                    "elasticity": round(float(slope), 4),
-                    "r_squared":  round(float(r2), 4),
-                }])
+                return pd.DataFrame(
+                    [
+                        {
+                            "category": pdf["category"].iloc[0],
+                            "elasticity": round(float(slope), 4),
+                            "r_squared": round(float(r2), 4),
+                        }
+                    ]
+                )
             except Exception:
                 return pd.DataFrame(columns=schema.fieldNames())
 
@@ -170,26 +170,34 @@ class PriceElasticityAnalyzer:
         """
         return elasticity_df.withColumn(
             "recommendation",
-            F.when(F.col("elasticity") < -2,
-                   "Price is highly elastic — consider reducing price to boost volume")
-            .when(F.col("elasticity").between(-2, -1),
-                  "Moderate elasticity — price reductions will increase revenue")
-            .when(F.col("elasticity").between(-1, -0.5),
-                  "Inelastic demand — small price increases are safe")
-            .when(F.col("elasticity") > -0.5,
-                  "Very inelastic — price increases unlikely to reduce demand")
-            .otherwise("Monitor for data anomalies")
+            F.when(
+                F.col("elasticity") < -2,
+                "Price is highly elastic — consider reducing price to boost volume",
+            )
+            .when(
+                F.col("elasticity").between(-2, -1),
+                "Moderate elasticity — price reductions will increase revenue",
+            )
+            .when(
+                F.col("elasticity").between(-1, -0.5),
+                "Inelastic demand — small price increases are safe",
+            )
+            .when(
+                F.col("elasticity") > -0.5,
+                "Very inelastic — price increases unlikely to reduce demand",
+            )
+            .otherwise("Monitor for data anomalies"),
         )
 
     def run(self) -> None:
         demand = self._read_demand()
 
         prod_elast = self.compute_product_elasticity(demand)
-        cat_elast  = self.category_elasticity(demand)
-        recs       = self.pricing_recommendations(prod_elast)
+        cat_elast = self.category_elasticity(demand)
+        recs = self.pricing_recommendations(prod_elast)
 
         for name, df in [
-            ("product_elasticity",  recs),
+            ("product_elasticity", recs),
             ("category_elasticity", cat_elast),
         ]:
             out = str(self.proc / name)
@@ -199,6 +207,7 @@ class PriceElasticityAnalyzer:
 
 if __name__ == "__main__":
     from config.spark_config import get_spark_session, stop_spark_session
+
     spark = get_spark_session()
     try:
         analyzer = PriceElasticityAnalyzer(spark, "./data/processed")

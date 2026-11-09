@@ -1,6 +1,9 @@
 """Health-check endpoint."""
+
 from datetime import datetime
+
 from fastapi import APIRouter
+
 from src.api.schemas import HealthResponse
 
 router = APIRouter()

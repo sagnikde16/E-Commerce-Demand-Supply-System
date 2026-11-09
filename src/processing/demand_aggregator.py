@@ -2,6 +2,7 @@
 Demand aggregation Spark job.
 Computes product-level and category-level demand KPIs.
 """
+
 from pathlib import Path
 
 from loguru import logger
@@ -23,7 +24,7 @@ class DemandAggregator:
 
     def __init__(self, spark: SparkSession, processed_path: str):
         self.spark = spark
-        self.proc  = Path(processed_path)
+        self.proc = Path(processed_path)
 
     def _read(self, name: str) -> DataFrame:
         return self.spark.read.parquet(str(self.proc / name))
@@ -35,27 +36,31 @@ class DemandAggregator:
         logger.info("Computing daily demand …")
         window = Window.partitionBy("product_id").orderBy("order_date")
 
-        daily = (
-            orders
-            .groupBy("product_id", "category", "order_date",
-                     "year", "month", "week_of_year", "day_of_week",
-                     "is_weekend", "season")
-            .agg(
-                F.sum("quantity").alias("units_sold"),
-                F.sum("revenue").alias("revenue"),
-                F.avg("unit_price").alias("avg_price"),
-                F.countDistinct("order_id").alias("orders"),
-                F.countDistinct("customer_id").alias("unique_customers"),
-            )
+        daily = orders.groupBy(
+            "product_id",
+            "category",
+            "order_date",
+            "year",
+            "month",
+            "week_of_year",
+            "day_of_week",
+            "is_weekend",
+            "season",
+        ).agg(
+            F.sum("quantity").alias("units_sold"),
+            F.sum("revenue").alias("revenue"),
+            F.avg("unit_price").alias("avg_price"),
+            F.countDistinct("order_id").alias("orders"),
+            F.countDistinct("customer_id").alias("unique_customers"),
         )
 
         return (
-            daily
-            .withColumn("units_sold_lag1",   F.lag("units_sold", 1).over(window))
-            .withColumn("units_sold_lag7",   F.lag("units_sold", 7).over(window))
-            .withColumn("mom_growth",
-                        (F.col("units_sold") - F.col("units_sold_lag1"))
-                        / (F.col("units_sold_lag1") + F.lit(1)))
+            daily.withColumn("units_sold_lag1", F.lag("units_sold", 1).over(window))
+            .withColumn("units_sold_lag7", F.lag("units_sold", 7).over(window))
+            .withColumn(
+                "mom_growth",
+                (F.col("units_sold") - F.col("units_sold_lag1")) / (F.col("units_sold_lag1") + F.lit(1)),
+            )
             .fillna(0)
         )
 
@@ -65,8 +70,7 @@ class DemandAggregator:
         """Monthly demand aggregated by category."""
         logger.info("Computing category demand …")
         return (
-            orders
-            .groupBy("category", "year", "month", "season")
+            orders.groupBy("category", "year", "month", "season")
             .agg(
                 F.sum("quantity").alias("total_units"),
                 F.sum("revenue").alias("total_revenue"),
@@ -75,8 +79,10 @@ class DemandAggregator:
                 F.countDistinct("customer_id").alias("unique_customers"),
                 F.countDistinct("order_id").alias("total_orders"),
             )
-            .withColumn("revenue_per_order",
-                        F.col("total_revenue") / (F.col("total_orders") + F.lit(1)))
+            .withColumn(
+                "revenue_per_order",
+                F.col("total_revenue") / (F.col("total_orders") + F.lit(1)),
+            )
         )
 
     # ── RFM Customer segmentation ─────────────────────────────────────────────
@@ -89,40 +95,26 @@ class DemandAggregator:
         logger.info("Computing RFM customer segments …")
         max_date = orders.agg(F.max("order_date")).collect()[0][0]
 
-        rfm = (
-            orders
-            .groupBy("customer_id")
-            .agg(
-                F.datediff(F.lit(max_date), F.max("order_date")).alias("recency"),
-                F.countDistinct("order_id").alias("frequency"),
-                F.sum("revenue").alias("monetary"),
-            )
-        )
-
-        # Simple quintile scoring
-        quantile_col = lambda col, alias: (
-            F.ntile(5).over(Window.orderBy(col)).alias(alias)
+        rfm = orders.groupBy("customer_id").agg(
+            F.datediff(F.lit(max_date), F.max("order_date")).alias("recency"),
+            F.countDistinct("order_id").alias("frequency"),
+            F.sum("revenue").alias("monetary"),
         )
 
         rfm_scored = (
-            rfm
-            .withColumn("r_score",
-                        F.ntile(5).over(Window.orderBy(F.col("recency").desc())))
-            .withColumn("f_score",
-                        F.ntile(5).over(Window.orderBy("frequency")))
-            .withColumn("m_score",
-                        F.ntile(5).over(Window.orderBy("monetary")))
-            .withColumn("rfm_score",
-                        F.col("r_score") + F.col("f_score") + F.col("m_score"))
+            rfm.withColumn("r_score", F.ntile(5).over(Window.orderBy(F.col("recency").desc())))
+            .withColumn("f_score", F.ntile(5).over(Window.orderBy("frequency")))
+            .withColumn("m_score", F.ntile(5).over(Window.orderBy("monetary")))
+            .withColumn("rfm_score", F.col("r_score") + F.col("f_score") + F.col("m_score"))
         )
 
         return rfm_scored.withColumn(
             "segment",
             F.when(F.col("rfm_score") >= 13, "Champions")
             .when(F.col("rfm_score") >= 10, "Loyal Customers")
-            .when(F.col("rfm_score") >= 7,  "Potential Loyalists")
-            .when(F.col("rfm_score") >= 5,  "At Risk")
-            .otherwise("Lost")
+            .when(F.col("rfm_score") >= 7, "Potential Loyalists")
+            .when(F.col("rfm_score") >= 5, "At Risk")
+            .otherwise("Lost"),
         )
 
     # ── Top sellers ───────────────────────────────────────────────────────────
@@ -132,8 +124,7 @@ class DemandAggregator:
         logger.info(f"Computing top {n} sellers …")
         window = Window.orderBy(F.col("total_revenue").desc())
         return (
-            orders
-            .groupBy("product_id", "category")
+            orders.groupBy("product_id", "category")
             .agg(
                 F.sum("quantity").alias("total_units"),
                 F.sum("revenue").alias("total_revenue"),
@@ -149,14 +140,10 @@ class DemandAggregator:
     def regional_demand(self, orders: DataFrame) -> DataFrame:
         """Demand split by region and category."""
         logger.info("Computing regional demand …")
-        return (
-            orders
-            .groupBy("region", "category", "year", "month")
-            .agg(
-                F.sum("quantity").alias("units_sold"),
-                F.sum("revenue").alias("revenue"),
-                F.countDistinct("order_id").alias("orders"),
-            )
+        return orders.groupBy("region", "category", "year", "month").agg(
+            F.sum("quantity").alias("units_sold"),
+            F.sum("revenue").alias("revenue"),
+            F.countDistinct("order_id").alias("orders"),
         )
 
     # ── Run all ───────────────────────────────────────────────────────────────
@@ -166,10 +153,10 @@ class DemandAggregator:
         orders = self._read("clean_orders")
 
         aggs = {
-            "daily_demand":    self.daily_demand(orders),
+            "daily_demand": self.daily_demand(orders),
             "category_demand": self.category_demand(orders),
-            "customer_rfm":    self.customer_rfm(orders),
-            "top_sellers":     self.top_sellers(orders),
+            "customer_rfm": self.customer_rfm(orders),
+            "top_sellers": self.top_sellers(orders),
             "regional_demand": self.regional_demand(orders),
         }
 
@@ -181,6 +168,7 @@ class DemandAggregator:
 
 if __name__ == "__main__":
     from config.spark_config import get_spark_session, stop_spark_session
+
     spark = get_spark_session()
     try:
         agg = DemandAggregator(spark, "./data/processed")

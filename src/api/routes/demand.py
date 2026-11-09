@@ -2,6 +2,7 @@
 Demand-related API routes.
 Reads pre-computed Parquet results (produced by Spark jobs).
 """
+
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -17,7 +18,7 @@ from src.api.schemas import (
 )
 
 router = APIRouter()
-PROC   = Path("./data/processed")
+PROC = Path("./data/processed")
 
 
 def _read_parquet(name: str) -> pd.DataFrame:
@@ -25,7 +26,7 @@ def _read_parquet(name: str) -> pd.DataFrame:
     if not path.exists():
         raise HTTPException(
             status_code=503,
-            detail=f"Dataset '{name}' not found. Run the ETL pipeline first."
+            detail=f"Dataset '{name}' not found. Run the ETL pipeline first.",
         )
     return pd.read_parquet(str(path))
 
@@ -75,12 +76,14 @@ async def batch_predict(request: DemandForecastRequest):
         for pid in request.product_ids:
             sub = df[df["product_id"] == pid].head(request.horizon_days)
             if not sub.empty:
-                results.append({
-                    "product_id": pid,
-                    "avg_predicted_demand": round(sub["predicted_demand"].mean(), 1),
-                    "total_predicted_demand": int(sub["predicted_demand"].sum()),
-                    "forecast_days": len(sub),
-                })
+                results.append(
+                    {
+                        "product_id": pid,
+                        "avg_predicted_demand": round(sub["predicted_demand"].mean(), 1),
+                        "total_predicted_demand": int(sub["predicted_demand"].sum()),
+                        "forecast_days": len(sub),
+                    }
+                )
 
         return results
     except HTTPException:

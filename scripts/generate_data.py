@@ -2,6 +2,7 @@
 Data generation script — CLI entry point.
 Run: python scripts/generate_data.py --records 50000
 """
+
 import sys
 from pathlib import Path
 
@@ -13,9 +14,7 @@ from src.ingestion.data_generator import run_generation
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Generate synthetic e-commerce data for the demand-supply system."
-    )
+    parser = argparse.ArgumentParser(description="Generate synthetic e-commerce data for the demand-supply system.")
     parser.add_argument(
         "--records",
         type=int,
